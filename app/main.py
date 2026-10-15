@@ -10,7 +10,7 @@ from .database import get_db
 app = FastAPI(
     title="Professional Blog API",
     description="FastAPI + PostgreSQL + SQLAlchemy + JWT + Alembic + CORS",
-    version="7.7.7",
+    version="4.4.4",
     docs_url=None if settings.is_production else "/docs",
     redoc_url=None if settings.is_production else "/redoc",
 )
