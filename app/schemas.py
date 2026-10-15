@@ -1,4 +1,4 @@
-from pydantic import BaseModel, EmailStr
+from pydantic import BaseModel, EmailStr, ConfigDict
 from typing import Optional
 from datetime import datetime
 
@@ -14,9 +14,8 @@ class UserResponse(BaseModel):
     email: EmailStr
     is_active: bool
     created_at: datetime
+    model_config = ConfigDict(from_attributes=True)
 
-    class Config:
-        from_attributes = True
 
 # --- CATEGORY SCHEMAS ---
 class CategoryBase(BaseModel):
@@ -29,9 +28,7 @@ class CategoryCreate(CategoryBase):
 class CategoryResponse(CategoryBase):
     id: int
     created_at: datetime
-
-    class Config:
-        from_attributes = True
+    model_config = ConfigDict(from_attributes=True)
 
 # --- POST SCHEMAS ---
 class PostBase(BaseModel):
@@ -51,9 +48,7 @@ class OwnerInfo(BaseModel):
     id: int
     username: str
     email: EmailStr
-
-    class Config:
-        from_attributes = True
+    model_config = ConfigDict(from_attributes=True)
 
 class PostResponse(PostBase):
     id: int
@@ -61,9 +56,7 @@ class PostResponse(PostBase):
     owner_id: int
     owner: Optional[OwnerInfo] = None
     category: Optional[CategoryResponse] = None
-
-    class Config:
-        from_attributes = True
+    model_config = ConfigDict(from_attributes=True)
 
 # --- TOKEN SCHEMAS ---
 class Token(BaseModel):

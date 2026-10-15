@@ -13,7 +13,7 @@ def create_post(
     db: Session = Depends(get_db),
     current_user: models.User = Depends(oauth2.get_current_user)
 ):
-    new_post = models.Post(owner_id=current_user.id, **post.dict())
+    new_post = models.Post(owner_id=current_user.id, **post.model_dump())
     db.add(new_post)
     db.commit()
     db.refresh(new_post)
@@ -61,7 +61,7 @@ def update_post(
     if post.owner_id != current_user.id:
         raise HTTPException(status_code=403, detail="Siz bu postni tahrirlay olmaysiz")
 
-    post_query.update(updated_post.dict(), synchronize_session=False)
+    post_query.update(updated_post.model_dump(), synchronize_session=False)
     db.commit()
     return post_query.first()
 
