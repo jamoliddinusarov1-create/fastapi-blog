@@ -51,7 +51,7 @@ app.include_router(upload.router)
 @app.get("/")
 def root():
     return {
-        "xabar": "Blog API v6.0 — WebSocket va Background Tasks bilan!",
+        "xabar": "Blog API v7.0 — WebSocket va Background Tasks bilan!",
         "environment": settings.environment
     }
 
