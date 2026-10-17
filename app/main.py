@@ -23,7 +23,7 @@ os.makedirs("uploads", exist_ok=True)
 app = FastAPI(
     title="Professional Blog API",
     description="FastAPI + PostgreSQL + SQLAlchemy + JWT + Alembic + CORS + WebSockets + Background Tasks",
-    version="6.0.0",
+    version="7.0.0",
     docs_url=None if settings.is_production else "/docs",
     redoc_url=None if settings.is_production else "/redoc",
 )
