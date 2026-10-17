@@ -1,0 +1,382 @@
+<!DOCTYPE html>
+<html lang="uz">
+<head>
+  <meta charset="utf-8" />
+  <title>Real-time Chat (WebSocket + JWT)</title>
+  <style>
+    * {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0;
+    }
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Arial, sans-serif;
+      background: #f0f2f5;
+      color: #333;
+    }
+    .container {
+      max-width: 720px;
+      margin: 30px auto;
+      padding: 0 15px;
+    }
+    /* Login Box */
+    .login-box {
+      background: white;
+      padding: 30px;
+      border-radius: 12px;
+      box-shadow: 0 4px 15px rgba(0,0,0,0.08);
+    }
+    .login-box h2 {
+      margin-bottom: 20px;
+      color: #1a73e8;
+    }
+    .login-box label {
+      display: block;
+      font-size: 13px;
+      font-weight: 600;
+      margin-bottom: 5px;
+      color: #555;
+    }
+    .login-box input {
+      width: 100%;
+      padding: 12px;
+      margin-bottom: 15px;
+      border: 1px solid #ddd;
+      border-radius: 8px;
+      font-size: 15px;
+    }
+    .login-box button {
+      width: 100%;
+      padding: 12px;
+      background: #1a73e8;
+      color: white;
+      border: none;
+      border-radius: 8px;
+      font-size: 16px;
+      font-weight: bold;
+      cursor: pointer;
+      transition: background 0.2s;
+    }
+    .login-box button:hover {
+      background: #1557b0;
+    }
+    /* Chat Box */
+    .chat-box {
+      display: none;
+      background: white;
+      border-radius: 12px;
+      box-shadow: 0 4px 15px rgba(0,0,0,0.08);
+      overflow: hidden;
+    }
+    .chat-header {
+      background: #1a73e8;
+      color: white;
+      padding: 16px 20px;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+    }
+    .chat-header h3 {
+      font-size: 18px;
+    }
+    .chat-header span {
+      font-size: 14px;
+      opacity: 0.9;
+    }
+    #messages {
+      height: 420px;
+      overflow-y: auto;
+      padding: 20px;
+      background: #fdfdfd;
+      display: flex;
+      flex-direction: column;
+      gap: 10px;
+    }
+    .msg {
+      max-width: 75%;
+      display: flex;
+      flex-direction: column;
+    }
+    .msg.system {
+      align-self: center;
+      text-align: center;
+      color: #777;
+      font-size: 13px;
+      font-style: italic;
+      background: #eee;
+      padding: 4px 12px;
+      border-radius: 12px;
+    }
+    .msg.mine {
+      align-self: flex-end;
+      align-items: flex-end;
+    }
+    .msg.other {
+      align-self: flex-start;
+      align-items: flex-start;
+    }
+    .bubble {
+      padding: 10px 15px;
+      border-radius: 18px;
+      font-size: 15px;
+      word-wrap: break-word;
+      line-height: 1.4;
+    }
+    .msg.mine .bubble {
+      background: #1a73e8;
+      color: white;
+      border-bottom-right-radius: 4px;
+    }
+    .msg.other .bubble {
+      background: #e4e6eb;
+      color: #050505;
+      border-bottom-left-radius: 4px;
+    }
+    .msg-info {
+      font-size: 11px;
+      color: #888;
+      margin-bottom: 3px;
+      padding: 0 4px;
+    }
+    .typing-indicator {
+      min-height: 20px;
+      padding: 4px 20px;
+      font-size: 12px;
+      color: #888;
+      font-style: italic;
+      background: #f9f9f9;
+    }
+    .input-area {
+      display: flex;
+      padding: 15px;
+      background: white;
+      border-top: 1px solid #eee;
+      gap: 10px;
+    }
+    .input-area input {
+      flex: 1;
+      padding: 12px 18px;
+      border: 1px solid #ccc;
+      border-radius: 24px;
+      outline: none;
+      font-size: 15px;
+    }
+    .input-area button {
+      padding: 10px 24px;
+      background: #1a73e8;
+      color: white;
+      border: none;
+      border-radius: 24px;
+      font-weight: bold;
+      cursor: pointer;
+    }
+    .input-area button:hover {
+      background: #1557b0;
+    }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <!-- LOGIN BOX -->
+    <div class="login-box" id="loginBox">
+      <h2>💬 Real-time Chat</h2>
+      <label for="roomInput">Xona nomi (masalan: general):</label>
+      <input type="text" id="roomInput" value="general" placeholder="Xona nomi" />
+
+      <label for="tokenInput">Access Token (JWT — ixtiyoriy, agar token bo'lmasa ism bilan ulanadi):</label>
+      <input type="text" id="tokenInput" placeholder="eyJhbGciOiJIUzI1NiIsInR5cCI..." />
+
+      <label for="usernameInput">Foydalanuvchi ismi (faqat tokengiz bo'lmasa kerak):</label>
+      <input type="text" id="usernameInput" placeholder="Ismingiz (masalan: Ali)" />
+
+      <button onclick="connect()">Xonaga Kirish</button>
+    </div>
+
+    <!-- CHAT BOX -->
+    <div class="chat-box" id="chatBox">
+      <div class="chat-header">
+        <h3 id="roomTitle">💬 general</h3>
+        <div>
+          <span id="usersCount">👥 1 kishi</span>
+          <button onclick="leaveChat()" style="margin-left: 10px; padding: 4px 10px; background: #e53935; border:none; color:white; border-radius:6px; cursor:pointer;">Chiqish</button>
+        </div>
+      </div>
+      <div id="messages"></div>
+      <div class="typing-indicator" id="typingIndicator"></div>
+      <div class="input-area">
+        <input type="text" id="msgInput" placeholder="Xabar yozing..." />
+        <button onclick="sendMessage()">Yuborish</button>
+      </div>
+    </div>
+  </div>
+
+  <script>
+    let ws;
+    let myUsername = "";
+    let myRoom = "";
+    let typingTimer = null;
+
+    async function loadRoomHistory(room) {
+      try {
+        const res = await fetch(`http://localhost:8000/ws/rooms/${room}/history`);
+        if (res.ok) {
+          const history = await res.json();
+          history.forEach(item => {
+            const timeStr = item.created_at ? new Date(item.created_at).toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'}) : "";
+            addMessage({
+              type: "message",
+              username: item.username,
+              message: item.content,
+              timestamp: timeStr
+            });
+          });
+        }
+      } catch (e) {
+        console.log("Tarixni yuklash imkoni bo'lmadi", e);
+      }
+    }
+
+    function connect() {
+      myRoom = document.getElementById("roomInput").value.trim() || "general";
+      const token = document.getElementById("tokenInput").value.trim();
+      const rawUser = document.getElementById("usernameInput").value.trim();
+
+      if (!myRoom) {
+        alert("Xona nomini kiriting!");
+        return;
+      }
+
+      let wsUrl = "";
+      if (token) {
+        wsUrl = `ws://localhost:8000/ws/chat/${myRoom}?token=${token}`;
+      } else {
+        if (!rawUser) {
+          alert("Token yoki foydalanuvchi ismidan birini kiriting!");
+          return;
+        }
+        myUsername = rawUser;
+        wsUrl = `ws://localhost:8000/ws/chat/${myRoom}/${myUsername}`;
+      }
+
+      ws = new WebSocket(wsUrl);
+
+      ws.onopen = () => {
+        document.getElementById("loginBox").style.display = "none";
+        document.getElementById("chatBox").style.display = "block";
+        document.getElementById("roomTitle").textContent = `💬 ${myRoom}`;
+        document.getElementById("msgInput").focus();
+        loadRoomHistory(myRoom);
+      };
+
+      ws.onmessage = (event) => {
+        try {
+          const data = JSON.parse(event.data);
+          if (data.type === "typing") {
+            handleTypingNotification(data);
+          } else {
+            addMessage(data);
+          }
+        } catch (err) {
+          addSystemMessage("Xabar: " + event.data);
+        }
+      };
+
+      ws.onclose = (event) => {
+        if (event.code === 1008) {
+          addSystemMessage("❌ Ulanish rad etildi: Token noto'g'ri yoki muddati tugagan (Code 1008).");
+        } else {
+          addSystemMessage("❌ Ulanish uzildi");
+        }
+      };
+
+      ws.onerror = () => {
+        addSystemMessage("⚠️ WebSocket xatosi yuz berdi");
+      };
+    }
+
+    function handleTypingNotification(data) {
+      const ind = document.getElementById("typingIndicator");
+      if (data.is_typing) {
+        ind.textContent = `✍️ ${data.username} yozmoqda...`;
+        clearTimeout(typingTimer);
+        typingTimer = setTimeout(() => {
+          ind.textContent = "";
+        }, 2000);
+      } else {
+        ind.textContent = "";
+      }
+    }
+
+    function addMessage(data) {
+      const messages = document.getElementById("messages");
+      if (data.type === "system") {
+        const div = document.createElement("div");
+        div.className = "msg system";
+        div.textContent = `${data.timestamp || ""} — ${data.message}`;
+        messages.appendChild(div);
+        if (data.users_count !== undefined) {
+          document.getElementById("usersCount").textContent = `👥 ${data.users_count} kishi`;
+        }
+      } else {
+        const isMine = myUsername && data.username === myUsername;
+        const div = document.createElement("div");
+        div.className = `msg ${isMine ? "mine" : "other"}`;
+        div.innerHTML = `
+          <div class="msg-info">${isMine ? "" : (data.username + " · ")}${data.timestamp || ""}</div>
+          <div class="bubble">${escapeHtml(data.message)}</div>
+        `;
+        messages.appendChild(div);
+      }
+      messages.scrollTop = messages.scrollHeight;
+    }
+
+    function addSystemMessage(text) {
+      const messages = document.getElementById("messages");
+      const div = document.createElement("div");
+      div.className = "msg system";
+      div.textContent = text;
+      messages.appendChild(div);
+      messages.scrollTop = messages.scrollHeight;
+    }
+
+    function escapeHtml(text) {
+      const map = { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#039;' };
+      return text.replace(/[&<>"']/g, m => map[m]);
+    }
+
+    function sendMessage() {
+      const input = document.getElementById("msgInput");
+      const message = input.value.trim();
+      if (message && ws && ws.readyState === WebSocket.OPEN) {
+        ws.send(message);
+        input.value = "";
+      }
+    }
+
+    function leaveChat() {
+      if (ws) ws.close();
+      document.getElementById("chatBox").style.display = "none";
+      document.getElementById("loginBox").style.display = "block";
+    }
+
+    // Yozmoqda bildirishini yuborish (Amaliy mashq 1)
+    let sendTypingTimeout = null;
+    const msgInput = document.getElementById("msgInput");
+    msgInput.addEventListener("input", () => {
+      if (ws && ws.readyState === WebSocket.OPEN) {
+        if (!sendTypingTimeout) {
+          ws.send(JSON.stringify({ type: "typing", is_typing: true }));
+        }
+        clearTimeout(sendTypingTimeout);
+        sendTypingTimeout = setTimeout(() => {
+          sendTypingTimeout = null;
+        }, 1500);
+      }
+    });
+
+    msgInput.addEventListener("keypress", (e) => {
+      if (e.key === "Enter") sendMessage();
+    });
+  </script>
+</body>
+</html>

@@ -1,14 +1,20 @@
-from fastapi import APIRouter, Depends, HTTPException, status
+from fastapi import APIRouter, Depends, HTTPException, status, BackgroundTasks
 from sqlalchemy.orm import Session
 
 from .. import models, schemas, oauth2
 from ..database import get_db
 from ..utils.hashing import hash_password
+from ..utils.email import send_welcome_email, write_log
 
 router = APIRouter(prefix="/users", tags=["Users"])
 
+
 @router.post("/", status_code=status.HTTP_201_CREATED, response_model=schemas.UserResponse)
-def create_user(user: schemas.UserCreate, db: Session = Depends(get_db)):
+def create_user(
+    user: schemas.UserCreate,
+    background_tasks: BackgroundTasks,
+    db: Session = Depends(get_db)
+):
     existing = db.query(models.User).filter(models.User.email == user.email).first()
     if existing:
         raise HTTPException(
@@ -23,11 +29,30 @@ def create_user(user: schemas.UserCreate, db: Session = Depends(get_db)):
     db.add(new_user)
     db.commit()
     db.refresh(new_user)
+
+    # Fonda email yuborish — foydalanuvchi kutmaydi!
+    background_tasks.add_task(
+        send_welcome_email,
+        email=new_user.email,
+        username=new_user.username,
+    )
+
+    # Fonda log yozish
+    background_tasks.add_task(
+        write_log,
+        action="user_created",
+        user_id=new_user.id,
+        details=f"email={new_user.email}",
+    )
+
+    # Darhol javob! (email kutilmaydi)
     return new_user
+
 
 @router.get("/me", response_model=schemas.UserResponse)
 def get_current_user_info(current_user: models.User = Depends(oauth2.get_current_user)):
     return current_user
+
 
 @router.get("/{user_id}", response_model=schemas.UserResponse)
 def get_user(user_id: int, db: Session = Depends(get_db)):

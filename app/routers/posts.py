@@ -1,15 +1,18 @@
-from fastapi import APIRouter, Depends, HTTPException, status
+from fastapi import APIRouter, Depends, HTTPException, status, BackgroundTasks
 from sqlalchemy.orm import Session
 from typing import List, Optional
 
 from .. import models, schemas, oauth2
 from ..database import get_db
+from ..utils.email import send_post_notification, write_log
 
 router = APIRouter(prefix="/posts", tags=["Posts"])
+
 
 @router.post("/", status_code=status.HTTP_201_CREATED, response_model=schemas.PostResponse)
 def create_post(
     post: schemas.PostCreate,
+    background_tasks: BackgroundTasks,
     db: Session = Depends(get_db),
     current_user: models.User = Depends(oauth2.get_current_user)
 ):
@@ -17,7 +20,22 @@ def create_post(
     db.add(new_post)
     db.commit()
     db.refresh(new_post)
+
+    # Fonda post bildirishi
+    background_tasks.add_task(
+        send_post_notification,
+        author_email=current_user.email,
+        title=new_post.title
+    )
+    background_tasks.add_task(
+        write_log,
+        action="post_created",
+        user_id=current_user.id,
+        details=f"title={new_post.title}"
+    )
+
     return new_post
+
 
 @router.get("/", response_model=List[schemas.PostResponse])
 def get_all_posts(
@@ -31,6 +49,7 @@ def get_all_posts(
     ).limit(limit).offset(skip).all()
     return posts
 
+
 @router.get("/my", response_model=List[schemas.PostResponse])
 def get_my_posts(
     db: Session = Depends(get_db),
@@ -39,12 +58,14 @@ def get_my_posts(
     posts = db.query(models.Post).filter(models.Post.owner_id == current_user.id).all()
     return posts
 
+
 @router.get("/{post_id}", response_model=schemas.PostResponse)
 def get_post(post_id: int, db: Session = Depends(get_db)):
     post = db.query(models.Post).filter(models.Post.id == post_id).first()
     if not post:
         raise HTTPException(status_code=404, detail="Post topilmadi")
     return post
+
 
 @router.put("/{post_id}", response_model=schemas.PostResponse)
 def update_post(
@@ -64,6 +85,7 @@ def update_post(
     post_query.update(updated_post.model_dump(), synchronize_session=False)
     db.commit()
     return post_query.first()
+
 
 @router.delete("/{post_id}", status_code=status.HTTP_204_NO_CONTENT)
 def delete_post(

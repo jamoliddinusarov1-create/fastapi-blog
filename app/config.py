@@ -10,14 +10,21 @@ class Settings(BaseSettings):
     environment: str = "development"
     debug: bool = True
 
+    # Email (ixtiyoriy)
+    mail_username: str = ""
+    mail_password: str = ""
+    mail_from: str = ""
+    mail_port: int = 587
+    mail_server: str = "smtp.gmail.com"
+
     @property
     def origins_list(self) -> List[str]:
-        return [o.strip() for o in self.allowed_origins.split(",")]
+        return [o.strip() for o in self.allowed_origins.split(",") if o.strip()]
 
     @property
     def is_production(self) -> bool:
         return self.environment == "production"
 
-    model_config = SettingsConfigDict(env_file=".env")
+    model_config = SettingsConfigDict(env_file=".env", extra="ignore")
 
 settings = Settings()

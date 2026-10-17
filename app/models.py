@@ -11,6 +11,7 @@ class User(Base):
     email = Column(String(255), nullable=False, unique=True)
     password = Column(String(255), nullable=False)
     phone = Column(String(20), nullable=True)
+    avatar_url = Column(String(500), nullable=True)
     is_active = Column(Boolean, server_default="TRUE", nullable=False)
     created_at = Column(
         TIMESTAMP(timezone=True),
@@ -52,3 +53,16 @@ class Post(Base):
 
     owner = relationship("User", back_populates="posts")
     category = relationship("Category", back_populates="posts")
+
+class Message(Base):
+    __tablename__ = "messages"
+
+    id = Column(Integer, primary_key=True, nullable=False)
+    room = Column(String(100), nullable=False, index=True)
+    username = Column(String(100), nullable=False)
+    content = Column(Text, nullable=False)
+    created_at = Column(
+        TIMESTAMP(timezone=True),
+        nullable=False,
+        server_default=func.now()
+    )
