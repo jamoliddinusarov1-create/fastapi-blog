@@ -15,21 +15,26 @@ jobs:
       DEBUG: "False"
 
     steps:
-      - uses: actions/checkout@v4
+      - name: Чек-аут репозитория
+        uses: actions/checkout@v4
 
-      - uses: actions/setup-python@v5
+      - name: Настройка Python
+        uses: actions/setup-python@v5
         with:
           python-version: "3.12"
           cache: pip
 
-      - name: Установка зависимостей
-        run: pip install -r requirements.txt
+      - name: Обновление pip и установка зависимостей
+        run: |
+          python -m pip install --upgrade pip
+          pip install -r requirements/requirements.txt -r requirements/requirements-dev.txt
+          pip install ruff pytest pytest-django
 
       - name: Линтер (ruff check)
-        run: ruff check .
+        run: python -m ruff check .
 
       - name: Проверка форматирования (ruff format)
-        run: ruff format --check .
+        run: python -m ruff format --check .
 
       - name: Проверка конфигурации Django
         run: python manage.py check
