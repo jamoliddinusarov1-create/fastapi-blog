@@ -1,6 +1,7 @@
 from pydantic_settings import BaseSettings, SettingsConfigDict
 from typing import List
 
+
 class Settings(BaseSettings):
     database_url: str
     secret_key: str
@@ -17,6 +18,10 @@ class Settings(BaseSettings):
     mail_port: int = 587
     mail_server: str = "smtp.gmail.com"
 
+    # Redis va Caching sozlamalari (15-16 Kun)
+    redis_url: str = "redis://localhost:6379"
+    cache_ttl: int = 300  # 5 daqiqa (sekund)
+
     @property
     def origins_list(self) -> List[str]:
         return [o.strip() for o in self.allowed_origins.split(",") if o.strip()]
@@ -26,5 +31,6 @@ class Settings(BaseSettings):
         return self.environment == "production"
 
     model_config = SettingsConfigDict(env_file=".env", extra="ignore")
+
 
 settings = Settings()
